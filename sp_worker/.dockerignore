@@ -1,0 +1,29 @@
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+logs/
+
+# Model outputs / temporary AI artifacts
+*.feather
+*.pkl
+sp_project/mlruns/baseline/*
+
+# unnecessary notebooks
+notebooks/
+
+# Static / temporary files
+st/
+
+# Git directory
+.git/
+
+# VSCode / IDE configs
+.vscode/
+.idea/
+
+# Docker files
+Dockerfile*
+docker-compose.override.yml

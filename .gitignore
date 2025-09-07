@@ -1,0 +1,19 @@
+# Python cache
+__pycache__/
+
+# Ruff cache
+.ruff_cache/
+
+# Environment files
+.env
+
+# Data files
+*.feather
+*.pkl
+
+# Project directories
+logs/
+.vscode/
+
+# MLflow tracking
+data/mlruns/

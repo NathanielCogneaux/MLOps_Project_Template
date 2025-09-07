@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "src"
+version = "0.2.0"
+description = "Smart Pricing project package"
+authors = [{name="Nathaniel Cogneaux"}]
+requires-python = ">=3.11"
+
+dependencies = [
+    "python-dotenv",
+    "numpy==1.25.2",
+    "pandas==2.1.1",
+
+    ### --- OMITTED --- ###
+
+    "pytz",
+    "pyarrow",
+    "requests",
+    "mlflow"
+]
+
+[project.optional-dependencies]
+dev = [
+    "ipython"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["*"]
