@@ -15,7 +15,7 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 # ---------- Preflight ----------
 cd "$PROJECT_ROOT"
 
-[[ -f docker-compose.yaml ]] || die "docker-compose.yaml not found at project root."
+[[ -f docker-compose.yml ]] || die "docker-compose.yaml not found at project root."
 [[ -f .env ]] || die ".env is missing. Create it."
 
 # Check shared volume exists
@@ -37,6 +37,11 @@ docker run --rm -v "${VOLUME_NAME}:/shared-data" alpine sh -c "
 # ---------- Build & Up ----------
 echo "Building and starting API service..."
 docker-compose up -d --build --remove-orphans
+
+# Check container status
+echo "Checking container the main status..."
+sleep 5
+docker compose ps
 
 echo "API deployment complete!"
 echo "API available at: http://localhost:${API_PORT}"

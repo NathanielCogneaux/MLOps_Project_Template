@@ -106,20 +106,17 @@ services:
     restart: always
 
   mlflow:
-    image: python:3.11-slim
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
     container_name: sp-mlflow
     ports:
-      - "5000:5000"
+      - "5050:5050"
     volumes:
-      - shared-data:/shared-data   # exactly same as Airflow
+      - shared-data:/shared-data
     environment:
-    - MLFLOW_TRACKING_URI=file:///shared-data/mlruns
-    working_dir: /opt/airflow
-    command: >
-      bash -c "
-        pip install mlflow &&
-        mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri file:///shared-data/mlruns
-      "
+      - MLFLOW_TRACKING_URI=file:///shared-data/mlruns
+    restart: always
 
   redis:
     image: redis:latest

@@ -13,11 +13,10 @@ dependencies = [
     "python-dotenv",
     "numpy==1.25.2",
     "pandas==2.1.1",
-
-    ### --- OMITTED --- ###
-
+    "scikit-learn>=0.24.0",
+    "lightgbm",
     "pytz",
-    "pyarrow",
+    "pyarrow>=10.0.1,<10.1.0",
     "requests",
     "mlflow"
 ]

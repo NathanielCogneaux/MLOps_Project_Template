@@ -24,6 +24,6 @@ st/
 .vscode/
 .idea/
 
-# Docker files
+# Docker files that shouldn’t be copied
 Dockerfile*
 docker-compose.override.yml

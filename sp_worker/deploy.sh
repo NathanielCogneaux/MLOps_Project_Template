@@ -17,6 +17,7 @@ WIPE=0
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE="docker compose"   # fallback set below if needed
 AIRFLOW_WEB_URL="${AIRFLOW_WEB_URL:-http://localhost:8080}"
+MLFLOW_UI_URL="${MLFLOW_UI_URL:-http://localhost:5050}"
 
 # ---------- Helpers ----------
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -52,8 +53,9 @@ done
 cd "$PROJECT_ROOT"
 
 [[ -f .env ]] || die ".env is missing. Create it (based on your .env.example)."
-[[ -f docker-compose.yml || -f docker-compose.yaml ]] || die "docker-compose.yml not found at project root."
+[[ -f docker-compose.yml ]] || die "docker-compose.yml not found at project root. Could the compose file be misplaced or could it be a yaml vs yml error?"
 [[ -f pyproject.toml ]] || die "pyproject.toml not found at project root."
+[[ -f Dockerfile.mlflow ]] || die "Dockerfile.mlflow not found at project root."
 
 echo "Using $( $COMPOSE version | head -n1 )"
 echo "Project root: $PROJECT_ROOT"
@@ -61,15 +63,14 @@ echo "Airflow Web URL: $AIRFLOW_WEB_URL"
 echo "WIPE volumes: $WIPE | BUILD: $DO_BUILD | LOG TAIL: $TAIL_LINES"
 
 if ! docker volume ls | grep -q "airflow_shared-data"; then
-    echo "Error: airflow_shared-data volume not found!"
-    echo "Please run the master deploy.sh script from the root directory"
-    exit 1
+  echo "Creating shared volume for Airflow & MLflow..."
+  docker volume create airflow_shared-data
 fi
 
 # ---------- Fix volume permissions ----------
-echo "Fixing volume permissions for Airflow (UID=50000, GID=0)..."
+echo "Fixing volume permissions for Airflow & MLflow (UID=50000, GID=0)..."
 docker run --rm -v airflow_shared-data:/shared-data alpine sh -c "
-  mkdir -p /shared-data/raw_data &&
+  mkdir -p /shared-data/{raw_data,mlruns,last_updates,outputs,processed,properties} &&
   chown -R 50000:0 /shared-data &&
   chmod -R 775 /shared-data
 "
@@ -85,8 +86,8 @@ fi
 
 # ---------- Build ----------
 if [[ "$DO_BUILD" -eq 1 ]]; then
-  echo "Building images (this uses pyproject.toml)…"
-  $COMPOSE build --pull
+  echo "Building Airflow and MLflow images…"
+  $COMPOSE build
 else
   echo "Skipping build (--no-build)"
 fi
@@ -101,18 +102,20 @@ $COMPOSE up -d
 
 # ---------- Health check (best-effort) ----------
 if command -v curl >/dev/null 2>&1; then
-  echo "Waiting for Airflow webserver health…"
+  echo "Waiting for Airflow webserver health..."
   ATTEMPTS=0
   until curl -fsS "${AIRFLOW_WEB_URL%/}/health" >/dev/null 2>&1; do
     ATTEMPTS=$((ATTEMPTS+1))
-    if [[ $ATTEMPTS -ge 60 ]]; then
-      echo "Webserver health probe timed out after ~60s. Continuing anyway."
-      break
-    fi
+    [[ $ATTEMPTS -ge 60 ]] && break
     sleep 1
   done
-else
-  echo "curl not found; skipping health probe."
+  echo "Waiting for MLflow UI..."
+  ATTEMPTS=0
+  until curl -fsS "${MLFLOW_UI_URL%/}" >/dev/null 2>&1; do
+    ATTEMPTS=$((ATTEMPTS+1))
+    [[ $ATTEMPTS -ge 60 ]] && break
+    sleep 1
+  done
 fi
 
 # ---------- Status & Logs ----------
@@ -122,12 +125,14 @@ $COMPOSE ps
 echo "Recent logs (webserver & scheduler, last ${TAIL_LINES} lines):"
 $COMPOSE logs --tail="$TAIL_LINES" airflow-webserver || true
 $COMPOSE logs --tail="$TAIL_LINES" airflow-scheduler || true
+$COMPOSE logs --tail="$TAIL_LINES" sp-mlflow || true
 
 # ---------- Credentials echo ----------
 USER_NAME="$(grep -E '^_AIRFLOW_WWW_USER_USERNAME=' .env | cut -d '=' -f2- 2>/dev/null || true)"
 USER_PASS="$(grep -E '^_AIRFLOW_WWW_USER_PASSWORD=' .env | cut -d '=' -f2- 2>/dev/null || true)"
 
 echo "Done. Airflow UI → ${AIRFLOW_WEB_URL}"
+echo "MLflow UI → ${MLFLOW_UI_URL}"
 
 if [[ -n "$USER_NAME" && -n "$USER_PASS" ]]; then
     echo "Username: ${USER_NAME}"
